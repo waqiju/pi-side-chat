@@ -1,0 +1,26 @@
+{
+	"name": "pi-side-chat",
+	"version": "0.1.0",
+	"description": "Pi extension: chat on a side branch of the native session tree, then jump back to the main thread. No separate chat list.",
+	"type": "module",
+	"license": "MIT",
+	"homepage": "https://github.com/waqiju/pi-side-chat",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/waqiju/pi-side-chat.git"
+	},
+	"keywords": [
+		"pi-package",
+		"pi-extension",
+		"pi",
+		"side-chat",
+		"branch",
+		"session-tree"
+	],
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*"
+	},
+	"pi": {
+		"extensions": ["extensions"]
+	}
+}
