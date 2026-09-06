@@ -3,9 +3,9 @@
 Two small workflow extensions for pi's native session tree:
 
 - **side-chat** — chat on a **side branch of the tree**, then jump back to the main thread. Unlike [pi-btw](https://github.com/narumiruna/pi-extensions)-style side questions, nothing is kept in a separate chat list — every word stays in the same session file, visible and navigable via `/tree`.
-- **mark** — insert a **marker node** into the tree (`/mark <text>`) as a real user message, visible under `Ctrl+U` (user-only) and, via its `📌 mark` label, under `Ctrl+L` (labeled-only); it doesn't trigger a reply. 章节标记：写入真 user 节点，Ctrl+U / Ctrl+L 可见，不触发回复。
+- **mark** — insert a **marker message** into the tree (`/mark <text>`): it shows up immediately like a user message, doesn't trigger a reply, and rides along to the LLM (as `role: "user"`) with your next prompt. 章节标记：立即显示、不单独发送、随下一条消息一起进上下文。
 
-在 pi 原生 session tree 上开 side 分支聊天，随时一键跳回主线；并可插入 tree 中 Ctrl+U / Ctrl+L 可见的章节标记节点。不维护独立 chat 列表——所有对话都在同一个 session tree 里。
+在 pi 原生 session tree 上开 side 分支聊天，随时一键跳回主线；并可插入地位等同 user message 的标记消息。不维护独立 chat 列表——所有对话都在同一个 session tree 里。
 
 ## Install
 
@@ -32,16 +32,14 @@ Workflow:
 
 ## Marker messages (`/mark`)
 
-`/mark <text>` (or bare `/mark` for an input prompt) inserts a real **user message** node (`type: "message"`, `role: "user"`) into the session tree:
+`/mark <text>` (or bare `/mark` for an input prompt) inserts a `custom_message` entry that pi treats like a user message everywhere it matters:
 
-- **Visible under `Ctrl+U`** in `/tree` — the user-only filter matches real user messages.
-- **Also labeled `📌 mark`**, so `Ctrl+L` (labeled-only) filters down to markers.
-- **Does not trigger a reply**: the node is written directly to the session tree.
-- **Persists** to the session file and survives `/reload`, restart, and resume.
-- **Not sent to the LLM with the next prompt**: it is written only to the session tree, not to the in-memory agent context, so it enters LLM context only after a compaction or `navigateTree` rebuild. (Deliberate trade-off to get `Ctrl+U` visibility without modifying pi core.)
-- While the agent is streaming, `/mark` refuses to insert (direct tree writes would corrupt the in-flight turn's tree structure).
+- **Shows immediately** in the TUI (rendered as a 📌 divider) and persists as its own tree node — selectable in `/tree` with the same behavior as a user message.
+- **Does not send anything**: no turn is triggered.
+- **Sent with the next prompt**: it is already in the agent's context, and pi's `convertToLlm` maps it to `role: "user"` — same status as a real user message, also for compaction/branch summaries.
+- While the agent is streaming, `/mark` is queued via steer and delivered within the current turn.
 
-Implementation: uses the private `sessionManager.appendMessage()` (present at runtime on the object typed as `ReadonlySessionManager`) to write a user-role node, then `pi.setLabel()` to tag it. No turn is triggered.
+Implementation: `pi.sendMessage({ customType: "mark", content, display: true })` with no options — pi's idle path appends it to context + session + TUI without triggering a turn. No filtering, no payload hacks.
 
 ## Design notes
 
