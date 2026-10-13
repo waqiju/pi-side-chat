@@ -19,7 +19,7 @@ Update later with `pi update --extensions`.
 
 | Action | Effect |
 |--------|--------|
-| `alt+s` (or `/side`) | Anchor the current position as the ⚓ main thread, then keep chatting — the conversation grows as a branch on the tree |
+| `alt+s` (or `/side`) | Anchor the current position as the ⚓ main thread; repeat at the same position to cancel the innermost side without navigating |
 | `alt+m` (or `/main`) | Navigate back to the most recent anchor with one keypress; the side-branch tip gets a 🌿 label so it stays findable |
 | `/side-clear` | Drop all anchors without navigating |
 
@@ -44,7 +44,7 @@ Implementation: `pi.sendMessage({ customType: "mark", content, display: true })`
 ## Design notes
 
 - **Anchors are persistent**: they are stored as entry labels inside the session file, so they survive `/reload`, restarts, and `pi -c` / `pi -r`. The in-memory anchor stack is rebuilt from labels on `session_start`.
-- **Stack semantics**: anchors nest — `alt+s` inside a side branch pushes another anchor; `/main` pops one level at a time.
+- **Stack + toggle semantics**: after the conversation advances, `alt+s` / `/side` pushes another anchor; at the same position, it cancels only the innermost anchor without navigating or touching the editor. Label-only entries do not count as advancing, but `/mark` and other real nodes do. `/main` pops one level at a time.
 - **Why `alt+m` is one keypress**: pi's shortcut handlers receive a read-only `ExtensionContext` without `navigateTree`, only command handlers get it. So `alt+m` dispatches `/main` through `pi.sendUserMessage("/main", { expandPromptTemplates: true })`, which routes to the command handler without touching the editor. An unsubmitted draft is preserved as-is and, if submitted later, goes to the branch you are then on.
 - While the agent is streaming, `/main` refuses to navigate and keeps the anchor.
 

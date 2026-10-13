@@ -5,7 +5,7 @@
  * 不维护独立 chat 列表——所有对话都在同一个 session tree 里。
  *
  * 用法：
- *   alt+s （或 /side）  把当前位置锚定为"主线"，之后继续聊天即为 side 分支
+ *   alt+s （或 /side）  锚定当前位置；在同一位置再次使用则取消最内层 side
  *   alt+m               直接执行 /main 返回主线，保留未提交草稿
  *   /main               导航回最近一个锚点
  *   /side-clear         清空所有锚点（不导航）
@@ -46,15 +46,33 @@ export default function (pi: ExtensionAPI) {
 		}
 	}
 
+	// label 条目会推进 leaf，但不代表用户离开了当前位置。
+	// 只跳过 label，保留 /mark、自定义条目等真实节点的区别。
+	function effectivePosition(ctx: ExtensionContext, id: string | null): string | null {
+		while (id) {
+			const entry = ctx.sessionManager.getEntry(id);
+			if (!entry || entry.type !== "label") return id;
+			id = entry.parentId;
+		}
+		return null;
+	}
+
 	function anchorHere(ctx: ExtensionContext): void {
-		const leafId = ctx.sessionManager.getLeafId();
+		const leafId = effectivePosition(ctx, ctx.sessionManager.getLeafId());
 		if (!leafId) {
 			ctx.ui.notify("空会话，无法锚定", "warning");
 			return;
 		}
 		if (anchors.length === 0) rebuildFromLabels(ctx);
-		if (anchors[anchors.length - 1] === leafId) {
-			ctx.ui.notify("当前位置已是锚点 ⚓", "info");
+		const top = anchors[anchors.length - 1];
+		if (top && effectivePosition(ctx, top) === leafId) {
+			anchors.pop();
+			pi.setLabel(top, undefined);
+			updateStatus(ctx);
+			ctx.ui.notify(
+				anchors.length ? `已取消当前 side，仍处于 side ×${anchors.length}` : "已取消当前 side，恢复主线状态",
+				"info",
+			);
 			return;
 		}
 		anchors.push(leafId);
@@ -83,7 +101,7 @@ export default function (pi: ExtensionAPI) {
 		}
 
 		const tip = ctx.sessionManager.getLeafId();
-		if (tip === id) {
+		if (effectivePosition(ctx, tip) === effectivePosition(ctx, id)) {
 			// 已经在锚点上，直接消耗掉这个锚点
 			pi.setLabel(id, undefined);
 			updateStatus(ctx);
@@ -116,7 +134,7 @@ export default function (pi: ExtensionAPI) {
 	// --- Shortcuts ---
 
 	pi.registerShortcut("alt+s", {
-		description: "Anchor main thread here; keep chatting on a side branch",
+		description: "Toggle side anchor here; nest after advancing the conversation",
 		handler: (ctx) => anchorHere(ctx),
 	});
 
@@ -136,7 +154,7 @@ export default function (pi: ExtensionAPI) {
 	// --- Commands ---
 
 	pi.registerCommand("side", {
-		description: "Anchor main thread here; keep chatting on a side branch",
+		description: "Toggle side anchor here; nest after advancing the conversation",
 		handler: async (_args, ctx) => anchorHere(ctx),
 	});
 
