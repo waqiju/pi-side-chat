@@ -20,14 +20,14 @@ Update later with `pi update --extensions`.
 | Action | Effect |
 |--------|--------|
 | `alt+s` (or `/side`) | Anchor the current position as the ⚓ main thread, then keep chatting — the conversation grows as a branch on the tree |
-| `alt+m` then `Enter` (or `/main`) | Navigate back to the most recent anchor; the side-branch tip gets a 🌿 label so it stays findable |
+| `alt+m` (or `/main`) | Navigate back to the most recent anchor with one keypress; the side-branch tip gets a 🌿 label so it stays findable |
 | `/side-clear` | Drop all anchors without navigating |
 
 Workflow:
 
 1. Mid-conversation, press `alt+s` — the current leaf is labeled `⚓ main N`.
 2. Ask your side questions normally. They are ordinary nodes in the session tree.
-3. Press `alt+m`, then `Enter` — pi navigates back to the anchor (`summarize: false`, no branch-summary prompt). The side branch tip is labeled `🌿 side`.
+3. Press `alt+m` — pi navigates back to the anchor immediately (`summarize: false`, no branch-summary prompt). The side branch tip is labeled `🌿 side`.
 4. To revisit a side branch later: `/tree` → `Ctrl+L` (labeled only) → pick the 🌿 entry.
 
 ## Marker messages (`/mark`)
@@ -45,7 +45,7 @@ Implementation: `pi.sendMessage({ customType: "mark", content, display: true })`
 
 - **Anchors are persistent**: they are stored as entry labels inside the session file, so they survive `/reload`, restarts, and `pi -c` / `pi -r`. The in-memory anchor stack is rebuilt from labels on `session_start`.
 - **Stack semantics**: anchors nest — `alt+s` inside a side branch pushes another anchor; `/main` pops one level at a time.
-- **Why `alt+m` needs Enter**: pi's shortcut handlers receive a read-only `ExtensionContext` without `navigateTree`; only command handlers get it. So `alt+m` prefills `/main` into the editor and Enter executes it. (If the editor has a draft, it is left untouched and you're asked to run `/main` manually.)
+- **Why `alt+m` is one keypress**: pi's shortcut handlers receive a read-only `ExtensionContext` without `navigateTree`, only command handlers get it. So `alt+m` dispatches `/main` through `pi.sendUserMessage("/main", { expandPromptTemplates: true })`, which routes to the command handler without touching the editor. An unsubmitted draft is preserved as-is and, if submitted later, goes to the branch you are then on.
 - While the agent is streaming, `/main` refuses to navigate and keeps the anchor.
 
 If you also use `/tree` manually and don't want the "Summarize branch?" prompt, add this to `~/.pi/agent/settings.json`:

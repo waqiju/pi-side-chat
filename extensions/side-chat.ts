@@ -6,7 +6,7 @@
  *
  * 用法：
  *   alt+s （或 /side）  把当前位置锚定为"主线"，之后继续聊天即为 side 分支
- *   alt+m               预填 /main 命令（按 Enter 执行）返回主线
+ *   alt+m               直接执行 /main 返回主线，保留未提交草稿
  *   /main               导航回最近一个锚点
  *   /side-clear         清空所有锚点（不导航）
  *
@@ -121,20 +121,15 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.registerShortcut("alt+m", {
-		description: "Return to main thread (prefills /main; press Enter)",
+		description: "Return to main thread immediately (preserves editor draft)",
 		handler: (ctx) => {
 			if (anchors.length === 0) rebuildFromLabels(ctx);
 			if (anchors.length === 0) {
 				ctx.ui.notify("没有主线锚点（先 alt+s 锚定）", "warning");
 				return;
 			}
-			// shortcut ctx 没有 navigateTree，只能预填命令交给 /main 执行
-			if (ctx.ui.getEditorText().trim()) {
-				ctx.ui.notify("编辑器有草稿，请手动输入 /main 返回", "warning");
-				return;
-			}
-			ctx.ui.setEditorText("/main");
-			ctx.ui.notify("按 Enter 返回主线 ⚓", "info");
+			// 通过公开 API 分发命令，获取 command ctx；不提交或覆盖编辑器草稿。
+			pi.sendUserMessage("/main", { expandPromptTemplates: true });
 		},
 	});
 
